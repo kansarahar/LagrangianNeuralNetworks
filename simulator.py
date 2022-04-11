@@ -1,10 +1,12 @@
+from typing_extensions import _AnnotatedAlias
+from numpy.core.numeric import Infinity
 from numpy.lib.npyio import BagObj
 import pygame
 import sys
 import numpy as np
 from pygame.constants import DOUBLEBUF, K_LEFT, KEYDOWN
 
-from physics import analytical_double_pendulum_fn
+from physics import analytical_double_pendulum_fn, RK4_step
 
 ################ Pygame Canvas Setup ################
 
@@ -48,20 +50,19 @@ class Double_Pendulum:
     def get_total_energy(self):
         return self.get_kinetic_energy() + self.get_potential_energy()
 
-    def step_analytical(self, dt=0.025):
+    def get_derivs(self, state, t=0):
+        return analytical_double_pendulum_fn(state, t, self.m1, self.m2, self.l1, self.l2, self.g)
+
+    def step_analytical(self, dt=0.001):
         self.state[0] %= (2*np.pi)
         self.state[1] %= (2*np.pi)
-        self.state += dt * analytical_double_pendulum_fn(self.state, self.m1, self.m2, self.l1, self.l2, self.g)
-
+        self.state = RK4_step(self.get_derivs, self.state, 0, dt)[0]
 
 
 ################## Main Event Loop ##################
 
-double_pendulum = Double_Pendulum(1, 1, 1, 1, np.pi/4, -np.pi*0.346547452)
+double_pendulum = Double_Pendulum(1, 1, 1, 1, np.pi/4, -np.pi*0.376547452)
 
-cycle = 0
-max_speed1 = 0
-max_speed2 = 0
 while True:
     for event in pygame.event.get():
         
@@ -82,24 +83,8 @@ while True:
     print('Kinetic Energy:', double_pendulum.get_kinetic_energy())
     print('Potential Energy:', double_pendulum.get_potential_energy())
     print('Total Energy:', double_pendulum.get_total_energy())
-
     double_pendulum.step_analytical()
     
-
-
-    double_pendulum.state[2] *= 1
-    double_pendulum.state[3] *= 1
-    if (cycle % 100 == 0 and cycle != 0):
-        print(max_speed1**2 + max_speed2**2)
-        cycle = 0
-        max_speed1 = 0
-        max_speed2 = 0
-    max_speed1 = max(abs(double_pendulum.state[2]), max_speed1)
-    max_speed2 = max(abs(double_pendulum.state[2]), max_speed2)
-    cycle += 1
-
-
-
     mass1_pos = (bg_surface.get_width()//2 + x1, y1)
     mass2_pos = (bg_surface.get_width()//2 + x2, y2)
 
@@ -111,4 +96,4 @@ while True:
     pygame.draw.circle(bg_surface, 'Blue', mass2_pos, 10)
 
     pygame.display.update()
-    clock.tick(60) # prevents the while loop from running faster than 60Hz
+    clock.tick(600) # prevents the while loop from running faster than 60Hz
