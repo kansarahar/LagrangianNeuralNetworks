@@ -1,14 +1,12 @@
-from typing_extensions import _AnnotatedAlias
-from numpy.core.numeric import Infinity
-from numpy.lib.npyio import BagObj
 import pygame
 import sys
 import numpy as np
-from pygame.constants import DOUBLEBUF, K_LEFT, KEYDOWN
 
-from physics import analytical_double_pendulum_fn, RK4_step
+import physics
 
-################ Pygame Canvas Setup ################
+# ---------------------------------------------------------- 
+# Pygame Canvas Setup
+# ----------------------------------------------------------
 
 px = 800
 
@@ -21,47 +19,11 @@ clock = pygame.time.Clock()
 bg_surface = pygame.Surface((4*px//5, 4*px//5))
 bg_surface.fill('White')
 
-########### Double Pendulum Calculations ############
+# ----------------------------------------------------------
+# Main Event Loop
+# ----------------------------------------------------------
 
-class Double_Pendulum:
-    def __init__(self, m1, m2, l1, l2, t1, t2, g=9.8):
-        self.m1 = m1
-        self.m2 = m2
-        self.l1 = l1
-        self.l2 = l2
-        self.g = g
-        self.state = np.array([t1, t2, 0, 0])
-
-    def get_cartesian_coords(self):
-        t1, t2, w1, w2 = self.state
-        x1, y1 = self.l1*np.sin(t1), self.l1*np.cos(t1)
-        x2, y2 = x1 + self.l2*np.sin(t2) , y1 + self.l2*np.cos(t2)
-        return np.array([x1, y1, x2, y2])
-
-    def get_potential_energy(self):
-        x1, y1, x2, y2 = self.get_cartesian_coords()
-        return -self.g * (self.m1 * y1 + self.m2 * y2)
-
-    def get_kinetic_energy(self):
-        t1, t2, w1, w2 = self.state 
-        v1, v2 = self.l1 * w1, self.l2 * w2
-        return 0.5 * (self.m1 * v1**2 + self.m2 * (v1**2 + v2**2 + 2*v1*v2*np.cos(t1 - t2)))
-
-    def get_total_energy(self):
-        return self.get_kinetic_energy() + self.get_potential_energy()
-
-    def get_derivs(self, state, t=0):
-        return analytical_double_pendulum_fn(state, t, self.m1, self.m2, self.l1, self.l2, self.g)
-
-    def step_analytical(self, dt=0.001):
-        self.state[0] %= (2*np.pi)
-        self.state[1] %= (2*np.pi)
-        self.state = RK4_step(self.get_derivs, self.state, 0, dt)[0]
-
-
-################## Main Event Loop ##################
-
-double_pendulum = Double_Pendulum(1, 1, 1, 1, np.pi/4, -np.pi*0.376547452)
+double_pendulum = physics.Double_Pendulum(1, 1, 2, 2, np.pi*0.26, np.pi*0.82)
 
 while True:
     for event in pygame.event.get():
@@ -96,4 +58,4 @@ while True:
     pygame.draw.circle(bg_surface, 'Blue', mass2_pos, 10)
 
     pygame.display.update()
-    clock.tick(600) # prevents the while loop from running faster than 60Hz
+    clock.tick(120) # prevents the while loop from running faster than 60Hz
