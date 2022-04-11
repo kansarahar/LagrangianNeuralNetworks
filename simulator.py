@@ -43,7 +43,7 @@ class Double_Pendulum:
     def get_kinetic_energy(self):
         t1, t2, w1, w2 = self.state 
         v1, v2 = self.l1 * w1, self.l2 * w2
-        return 0.5 * (self.m1 * v1**2 + self.m2 * v2**2)
+        return 0.5 * (self.m1 * v1**2 + self.m2 * (v1**2 + v2**2 + 2*v1*v2*np.cos(t1 - t2)))
 
     def get_total_energy(self):
         return self.get_kinetic_energy() + self.get_potential_energy()
@@ -62,7 +62,7 @@ double_pendulum = Double_Pendulum(1, 1, 1, 1, np.pi/4, -np.pi*0.346547452)
 cycle = 0
 max_speed1 = 0
 max_speed2 = 0
-while True:  
+while True:
     for event in pygame.event.get():
         
         # exit the game
