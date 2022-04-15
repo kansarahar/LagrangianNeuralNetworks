@@ -5,7 +5,7 @@ import numpy as np
 import physics
 
 # ---------------------------------------------------------- 
-# Pygame Canvas Setup
+#   Pygame Canvas Setup
 # ----------------------------------------------------------
 
 px = 800
@@ -20,10 +20,10 @@ bg_surface = pygame.Surface((4*px//5, 4*px//5))
 bg_surface.fill('White')
 
 # ----------------------------------------------------------
-# Main Event Loop
+#   Main Event Loop
 # ----------------------------------------------------------
 
-double_pendulum = physics.Double_Pendulum(1, 1, 2, 2, np.pi*0.26, np.pi*0.82)
+double_pendulum = physics.Double_Pendulum(np.pi*0.26, np.pi*0.82, 0, 0, 1, 1, 2, 2, )
 
 while True:
     for event in pygame.event.get():
@@ -42,10 +42,8 @@ while True:
         #        double_pendulum.step_analytical(-0.01)
    
     x1, y1, x2, y2 = 0.1 * px * double_pendulum.get_cartesian_coords()
-    print('Kinetic Energy:', double_pendulum.get_kinetic_energy())
-    print('Potential Energy:', double_pendulum.get_potential_energy())
-    print('Total Energy:', double_pendulum.get_total_energy())
     double_pendulum.step_analytical()
+    #print(double_pendulum.get_total_energy())
     
     mass1_pos = (bg_surface.get_width()//2 + x1, y1)
     mass2_pos = (bg_surface.get_width()//2 + x2, y2)
