@@ -14,6 +14,7 @@ parser = argparse.ArgumentParser(
     description='A tool used for creating double pendulum experimental data',
     formatter_class=argparse.ArgumentDefaultsHelpFormatter,
 )
+parser.add_argument('--experiment', dest='experiment', type=str, choices=['double_pendulum'], default='double_pendulum', help='the type of experiment that the LNN is learning')
 
 parser.add_argument('--num-experiments', dest='num_experiments', type=int, default=100, help='the number of random double pendulum experimental starting conditions to be used')
 parser.add_argument('--step-size', dest='step_size', type=float, default=0.01, help='the time step size (in seconds); WARNING - values > 0.01 may cause instability')
@@ -25,8 +26,6 @@ parser.add_argument('--l1', dest='l1', type=float, default=1, help='the length o
 parser.add_argument('--l2', dest='l2', type=float, default=1, help='the length of the second pendulum')
 parser.add_argument('--g', dest='g', type=float, default=9.8, help='the acceleration due to gravity')
 
-parser.add_argument('--data-dir-name', dest='dir_name', type=str, default='generated_data', help='(default=generated_data) the name of the directory where the data files will be stored')
-
 args = parser.parse_args()
 
 # ----------------------------------------------------------
@@ -36,7 +35,7 @@ args = parser.parse_args()
 dir_name = os.path.dirname(os.path.abspath(__file__))
 
 # directory where data will be stored
-data_path = os.path.join(dir_name, 'data', args.dir_name)
+data_path = os.path.join(dir_name, 'data', '%s_data' % args.experiment)
 data_file_path = os.path.join(data_path, 'data.npy')
 params_path = os.path.join(data_path, 'params.npy')
 os.makedirs(data_path, exist_ok=True)
@@ -58,7 +57,7 @@ total_steps = int(args.duration / args.step_size)
 data = np.zeros((total_steps * num_exp, 6))
 for step in tqdm(range(total_steps)):
     for (idx, experiment) in enumerate(experiments):
-        w1, w2, a1, a2 = experiment.get_current_derivs()
+        w1, w2, a1, a2 = experiment.get_current_derivs_analytical()
         data[num_exp * step + idx] = np.concatenate((experiment.state, (a1, a2)))
         experiment.step_analytical()
 
