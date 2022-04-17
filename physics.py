@@ -112,7 +112,7 @@ class Double_Pendulum:
             print('No LNN is attached to this experiment')
             sys.exit(1)
         lnn_result = self.lnn(state)
-        return np.concatenate((state[2:], lnn_result.detach().numpy()))
+        return torch.cat((state[2:], lnn_result))
 
     def step_analytical(self, dt=0.01):
         step = RK4_step(self.get_derivs_analytical, self.state, 0, dt)

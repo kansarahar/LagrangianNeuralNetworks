@@ -36,4 +36,4 @@ class LNN(nn.Module):
         dq0 = D[0, :self.num_params]
         dq1 = H[self.num_params:, self.num_params:]
         dq2 = H[self.num_params:, :self.num_params]
-        return torch.inverse(dq1) @ (dq0 - dq2 @ x[self.num_params:])
+        return torch.linalg.pinv(dq1) @ (dq0 - dq2 @ x[self.num_params:])

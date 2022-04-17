@@ -29,7 +29,7 @@ args = parser.parse_args()
 # ----------------------------------------------------------
 
 dir_name = os.path.dirname(os.path.abspath(__file__))
-model_dir = os.path.join(dir_name, 'models', '%s_model' % args.experiment)
+model_dir = os.path.join(dir_name, 'models', 'double_pendulum_models')
 model_path = os.path.join(model_dir, args.model_name)
 
 # ---------------------------------------------------------- 
@@ -59,7 +59,7 @@ default_font = pygame.font.Font(pygame.font.get_default_font(), 16)
 # ----------------------------------------------------------
 
 model = LNN(2)
-#model.load_state_dict(torch.load(model_path))
+model.load_state_dict(torch.load(model_path))
 model.eval()
 double_pendulum = physics.Double_Pendulum(np.pi*0.26, np.pi*0.82, 0, 0, 1, 1, 1, 1, 9.8, model)
 
@@ -79,8 +79,8 @@ while True:
         #    if (event.key == pygame.K_a or event.key == pygame.K_LEFT):
         #        double_pendulum.step_analytical(-0.01)
    
-    x1, y1, x2, y2 = 0.1 * px * double_pendulum.get_cartesian_coords().numpy()
-    double_pendulum.step_lagrangian() if args.lnn else double_pendulum.step_analytical()
+    x1, y1, x2, y2 = 0.1 * px * double_pendulum.get_cartesian_coords().detach().numpy()
+    double_pendulum.step_lnn() if args.lnn else double_pendulum.step_lagrangian()
     
     mass1_pos = (bg_surface.get_width()//2 + x1, y1)
     mass2_pos = (bg_surface.get_width()//2 + x2, y2)
