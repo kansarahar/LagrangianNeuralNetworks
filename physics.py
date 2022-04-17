@@ -1,6 +1,8 @@
 import sys
+import math
 import numpy as np
 import torch
+from torch import tensor
 from torch.autograd.functional import jacobian, hessian
 
 # ---------------------------------------------------------- 
@@ -39,15 +41,15 @@ class Double_Pendulum:
         self.l1 = l1
         self.l2 = l2
         self.g = g
-        self.state = np.array([t1, t2, w1, w2])
+        self.state = tensor([t1, t2, w1, w2]).float()
         self.lnn = lnn
 
     def get_cartesian_coords(self, state=None):
         state = state if state is not None else self.state
         t1, t2, w1, w2 = state
-        x1, y1 = self.l1*np.sin(t1), self.l1*np.cos(t1)
-        x2, y2 = x1 + self.l2*np.sin(t2) , y1 + self.l2*np.cos(t2)
-        return np.array([x1, y1, x2, y2])
+        x1, y1 = self.l1*torch.sin(t1), self.l1*torch.cos(t1)
+        x2, y2 = x1 + self.l2*torch.sin(t2), y1 + self.l2*torch.cos(t2)
+        return torch.stack([x1, y1, x2, y2])
 
     def get_potential_energy(self, state=None):
         state = state if state is not None else self.state
@@ -58,7 +60,7 @@ class Double_Pendulum:
         state = state if state is not None else self.state
         t1, t2, w1, w2 = state
         v1, v2 = self.l1 * w1, self.l2 * w2
-        return 0.5 * (self.m1 * v1**2 + self.m2 * (v1**2 + v2**2 + 2*v1*v2*np.cos(t1 - t2)))
+        return 0.5 * (self.m1 * v1**2 + self.m2 * (v1**2 + v2**2 + 2*v1*v2*torch.cos(t1 - t2)))
 
     def get_total_energy(self, state=None):
         state = state if state is not None else self.state
@@ -79,42 +81,48 @@ class Double_Pendulum:
         state = state if state is not None else self.state
 
         m1, m2, l1, l2, g = self.m1, self.m2, self.l1, self.l2, self.g
-        t1, t2, w1, w2 = state # angles and angular velocities of the two masses
+        t1, t2, w1, w2 = state.tolist() # angles and angular velocities of the two masses
 
-        a1 = (l2 / l1) * (m2 / (m1 + m2)) * np.cos(t1 - t2)
-        a2 = (l1 / l2) * np.cos(t1 - t2)
-        f1 = -(l2 / l1) * (m2 / (m1 + m2)) * (w2**2) * np.sin(t1 - t2) - (g / l1) * np.sin(t1)
-        f2 = (l1 / l2) * (w1**2) * np.sin(t1 - t2) - (g / l2) * np.sin(t2)
+        a1 = (l2 / l1) * (m2 / (m1 + m2)) * math.cos(t1 - t2)
+        a2 = (l1 / l2) * math.cos(t1 - t2)
+        f1 = -(l2 / l1) * (m2 / (m1 + m2)) * (w2**2) * math.sin(t1 - t2) - (g / l1) * math.sin(t1)
+        f2 = (l1 / l2) * (w1**2) * math.sin(t1 - t2) - (g / l2) * math.sin(t2)
         g1 = (f1 - a1 * f2) / (1 - a1 * a2)
         g2 = (f2 - a2 * f1) / (1 - a1 * a2)
 
         # return derivative of state
-        return np.array([w1, w2, g1, g2])
+        return tensor([w1, w2, g1, g2]).float()
 
     def get_derivs_lagrangian(self, state=None, t=0):
         state = state if state is not None else self.state
-        state_tensor = torch.tensor(state).float()
  
-        H = hessian(self.get_lagrangian, state_tensor)
-        D = jacobian(self.get_lagrangian, state_tensor)
+        H = hessian(self.get_lagrangian, state)
+        J = jacobian(self.get_lagrangian, state)
 
-        A = D[0, :2]
+        A = J[:2]
         B = H[2:, 2:]
-        C = H[:2, 2:]
+        C = H[2:, :2]
 
         q_tt = torch.inverse(B) @ (A - C @ state[2:])
-        return q_tt
+        return torch.cat((state[2:], q_tt))
 
     def get_derivs_lnn(self, state=None, t=0):
         state = state if state is not None else self.state
         if (not self.lnn):
             print('No LNN is attached to this experiment')
             sys.exit(1)
-        lnn_result = self.lnn(torch.tensor(state).float())
+        lnn_result = self.lnn(state)
         return np.concatenate((state[2:], lnn_result.detach().numpy()))
 
     def step_analytical(self, dt=0.01):
         step = RK4_step(self.get_derivs_analytical, self.state, 0, dt)
+        self.state += step
+        self.state[0] %= (2*np.pi) # angles should be [0, 2pi)
+        self.state[1] %= (2*np.pi)
+        return step
+
+    def step_lagrangian(self, dt=0.01):
+        step = RK4_step(self.get_derivs_lagrangian, self.state, 0, dt)
         self.state += step
         self.state[0] %= (2*np.pi) # angles should be [0, 2pi)
         self.state[1] %= (2*np.pi)
@@ -126,3 +134,8 @@ class Double_Pendulum:
         self.state[0] %= (2*np.pi) # angles should be [0, 2pi)
         self.state[1] %= (2*np.pi)
         return step
+
+#dp = Double_Pendulum(1,1)
+#state = tensor([1,2,3,4]).float()
+#qtt = dp.get_derivs_lagrangian(state)
+#print(qtt)

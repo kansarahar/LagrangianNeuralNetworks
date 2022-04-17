@@ -59,7 +59,7 @@ default_font = pygame.font.Font(pygame.font.get_default_font(), 16)
 # ----------------------------------------------------------
 
 model = LNN(2)
-model.load_state_dict(torch.load(model_path))
+#model.load_state_dict(torch.load(model_path))
 model.eval()
 double_pendulum = physics.Double_Pendulum(np.pi*0.26, np.pi*0.82, 0, 0, 1, 1, 1, 1, 9.8, model)
 
@@ -79,8 +79,8 @@ while True:
         #    if (event.key == pygame.K_a or event.key == pygame.K_LEFT):
         #        double_pendulum.step_analytical(-0.01)
    
-    x1, y1, x2, y2 = 0.1 * px * double_pendulum.get_cartesian_coords()
-    double_pendulum.step_lnn() if args.lnn else double_pendulum.step_analytical()
+    x1, y1, x2, y2 = 0.1 * px * double_pendulum.get_cartesian_coords().numpy()
+    double_pendulum.step_lagrangian() if args.lnn else double_pendulum.step_analytical()
     
     mass1_pos = (bg_surface.get_width()//2 + x1, y1)
     mass2_pos = (bg_surface.get_width()//2 + x2, y2)
@@ -92,9 +92,9 @@ while True:
     pygame.draw.circle(bg_surface, 'Red', mass1_pos, 10)
     pygame.draw.circle(bg_surface, 'Blue', mass2_pos, 10)
 
-    potential_energy_text = default_font.render('Potential Energy: %s J' % round(double_pendulum.get_potential_energy(), 3), True, (0, 0, 0))
-    kinetic_energy_text = default_font.render('Kinetic Energy: %s J' % round(double_pendulum.get_kinetic_energy(), 3), True, (0, 0, 0))
-    total_energy_text = default_font.render('Total Energy: %s J' % round(double_pendulum.get_total_energy(), 3), True, (0, 0, 0))
+    potential_energy_text = default_font.render('Potential Energy: %s J' % round(double_pendulum.get_potential_energy().item(), 3), True, (0, 0, 0))
+    kinetic_energy_text = default_font.render('Kinetic Energy: %s J' % round(double_pendulum.get_kinetic_energy().item(), 3), True, (0, 0, 0))
+    total_energy_text = default_font.render('Total Energy: %s J' % round(double_pendulum.get_total_energy().item(), 3), True, (0, 0, 0))
     bg_surface.blit(potential_energy_text, (10, (bg_surface.get_height()//2 + 100)))
     bg_surface.blit(kinetic_energy_text, (10, (bg_surface.get_height()//2 + 125)))
     bg_surface.blit(total_energy_text, (10, (bg_surface.get_height()//2 + 150)))
