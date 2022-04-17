@@ -17,7 +17,6 @@ class Lagrangian(nn.Module):
             nn.Softplus(),
             nn.Linear(hidden_dimensions, 1)
         )
-
     def forward(self, x):
         # x = (q0, q1, ..., q0_t, q1_t, ...)
         return self.output(x)
@@ -43,4 +42,4 @@ class LNN(nn.Module):
         dq0 = D[0, :self.num_params]
         dq1 = H[self.num_params:, self.num_params:]
         dq2 = H[:self.num_params, self.num_params:]
-        return torch.linalg.inv(dq1) @ (dq0 - dq2 @ x[self.num_params:])
+        return torch.inverse(dq1) @ (dq0 - dq2 @ x[self.num_params:])

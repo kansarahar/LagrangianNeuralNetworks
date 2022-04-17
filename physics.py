@@ -1,6 +1,7 @@
 import sys
 import numpy as np
 import torch
+from torch.autograd.functional import jacobian, hessian
 
 # ---------------------------------------------------------- 
 #   Simple Runge Kutta Method Implementation
@@ -41,25 +42,33 @@ class Double_Pendulum:
         self.state = np.array([t1, t2, w1, w2])
         self.lnn = lnn
 
-    def get_cartesian_coords(self):
-        t1, t2, w1, w2 = self.state
+    def get_cartesian_coords(self, state=None):
+        state = state if state is not None else self.state
+        t1, t2, w1, w2 = state
         x1, y1 = self.l1*np.sin(t1), self.l1*np.cos(t1)
         x2, y2 = x1 + self.l2*np.sin(t2) , y1 + self.l2*np.cos(t2)
         return np.array([x1, y1, x2, y2])
 
-    def get_potential_energy(self):
-        x1, y1, x2, y2 = self.get_cartesian_coords()
+    def get_potential_energy(self, state=None):
+        state = state if state is not None else self.state
+        x1, y1, x2, y2 = self.get_cartesian_coords(state)
         return -self.g * (self.m1 * y1 + self.m2 * y2)
 
-    def get_kinetic_energy(self):
-        t1, t2, w1, w2 = self.state
+    def get_kinetic_energy(self, state=None):
+        state = state if state is not None else self.state
+        t1, t2, w1, w2 = state
         v1, v2 = self.l1 * w1, self.l2 * w2
         return 0.5 * (self.m1 * v1**2 + self.m2 * (v1**2 + v2**2 + 2*v1*v2*np.cos(t1 - t2)))
 
-    def get_total_energy(self):
-        return self.get_kinetic_energy() + self.get_potential_energy()
+    def get_total_energy(self, state=None):
+        state = state if state is not None else self.state
+        return self.get_kinetic_energy(state) + self.get_potential_energy(state)
 
-    def get_derivs_analytical(self, state, t=0):
+    def get_lagrangian(self, state=None):
+        state = state if state is not None else self.state
+        return self.get_kinetic_energy(state) - self.get_potential_energy(state)
+
+    def get_derivs_analytical(self, state=None, t=0):
         '''
         double pendulum dynamics from https://github.com/MilesCranmer/lagrangian_nns/blob/master/experiment_dblpend/physics.py
 
@@ -67,6 +76,8 @@ class Double_Pendulum:
         :param t: dummy variable for runge-kutta calculation
         :returns: the angular velocities and accelerations of the two masses
         '''
+        state = state if state is not None else self.state
+
         m1, m2, l1, l2, g = self.m1, self.m2, self.l1, self.l2, self.g
         t1, t2, w1, w2 = state # angles and angular velocities of the two masses
 
@@ -80,26 +91,38 @@ class Double_Pendulum:
         # return derivative of state
         return np.array([w1, w2, g1, g2])
 
-    def get_current_derivs_analytical(self):
-        return self.get_derivs_analytical(self.state)
+    def get_derivs_lagrangian(self, state=None, t=0):
+        state = state if state is not None else self.state
+        state_tensor = torch.tensor(state).float()
+ 
+        H = hessian(self.get_lagrangian, state_tensor)
+        D = jacobian(self.get_lagrangian, state_tensor)
 
-    def get_derivs_lnn(self, state, t=0):
+        A = D[0, :2]
+        B = H[2:, 2:]
+        C = H[:2, 2:]
+
+        q_tt = torch.inverse(B) @ (A - C @ state[2:])
+        return q_tt
+
+    def get_derivs_lnn(self, state=None, t=0):
+        state = state if state is not None else self.state
         if (not self.lnn):
             print('No LNN is attached to this experiment')
             sys.exit(1)
         lnn_result = self.lnn(torch.tensor(state).float())
         return np.concatenate((state[2:], lnn_result.detach().numpy()))
 
-    def get_current_derivs_lnn(self):
-        return self.get_derivs_lnn(self.state)
-
     def step_analytical(self, dt=0.01):
+        step = RK4_step(self.get_derivs_analytical, self.state, 0, dt)
+        self.state += step
         self.state[0] %= (2*np.pi) # angles should be [0, 2pi)
         self.state[1] %= (2*np.pi)
-        self.state += RK4_step(self.get_derivs_analytical, self.state, 0, dt)
-        return self.state
+        return step
 
     def step_lnn(self, dt=0.01):
+        step = RK4_step(self.get_derivs_lnn, self.state, 0, dt)
+        self.state += step
         self.state[0] %= (2*np.pi) # angles should be [0, 2pi)
         self.state[1] %= (2*np.pi)
-        self.state += RK4_step(self.get_derivs_lnn, self.state, 0, dt)
+        return step
