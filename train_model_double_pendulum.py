@@ -83,9 +83,7 @@ training_generator = torch.utils.data.DataLoader(training_set, shuffle=True)
 #   Train Model
 # ----------------------------------------------------------
 
-device = torch.device('cpu')
 model = LNN(2)
-model.to(device)
 optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
 loss_function = torch.nn.L1Loss()
 
@@ -101,8 +99,7 @@ for epoch in range(args.epochs):
     epoch_loss = 0
     
     for count, (state, deriv) in enumerate(tqdm(training_generator)):
-        #with torch.autograd.detect_anomaly():
-        state, deriv = state.flatten().to(device), deriv.flatten().to(device)
+        state, deriv = state.flatten(), deriv.flatten()
         optimizer.zero_grad()
         loss = loss_function(model(state), deriv)
         loss.backward()

@@ -47,8 +47,8 @@ class Double_Pendulum:
     def get_cartesian_coords(self, state=None):
         state = state if state is not None else self.state
         t1, t2, w1, w2 = state
-        x1, y1 = self.l1*torch.sin(t1), self.l1*torch.cos(t1)
-        x2, y2 = x1 + self.l2*torch.sin(t2), y1 + self.l2*torch.cos(t2)
+        x1, y1 = self.l1 * torch.sin(t1), self.l1 * torch.cos(t1)
+        x2, y2 = x1 + self.l2 * torch.sin(t2), y1 + self.l2 * torch.cos(t2)
         return torch.stack([x1, y1, x2, y2])
 
     def get_potential_energy(self, state=None):
