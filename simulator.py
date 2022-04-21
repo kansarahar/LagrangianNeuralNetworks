@@ -82,12 +82,13 @@ while True:
     x1, y1, x2, y2 = 0.1 * px * double_pendulum.get_cartesian_coords().detach().numpy()
     double_pendulum.step_lnn() if args.lnn else double_pendulum.step_lagrangian()
     
-    mass1_pos = (bg_surface.get_width()//2 + x1, y1)
-    mass2_pos = (bg_surface.get_width()//2 + x2, y2)
+    vertical_offset = 20
+    mass1_pos = (bg_surface.get_width()//2 + x1, y1 + vertical_offset)
+    mass2_pos = (bg_surface.get_width()//2 + x2, y2 + vertical_offset)
 
     screen.blit(bg_surface, ((px - bg_surface.get_width())//2, (px - bg_surface.get_height())//2)) # block image transfer (one surface imposed on another surface)
     bg_surface.fill('White')
-    pygame.draw.line(bg_surface, 'Black', (bg_surface.get_width()//2, 0), mass1_pos)
+    pygame.draw.line(bg_surface, 'Black', (bg_surface.get_width()//2, vertical_offset), mass1_pos)
     pygame.draw.line(bg_surface, 'Black', mass1_pos, mass2_pos)
     pygame.draw.circle(bg_surface, 'Red', mass1_pos, 10)
     pygame.draw.circle(bg_surface, 'Blue', mass2_pos, 10)
@@ -98,7 +99,6 @@ while True:
     bg_surface.blit(potential_energy_text, (10, (bg_surface.get_height()//2 + 100)))
     bg_surface.blit(kinetic_energy_text, (10, (bg_surface.get_height()//2 + 125)))
     bg_surface.blit(total_energy_text, (10, (bg_surface.get_height()//2 + 150)))
-
 
     pygame.display.update()
     clock.tick(120) # prevents the while loop from running faster than 60Hz

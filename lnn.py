@@ -26,13 +26,17 @@ class LNN(nn.Module):
             nn.Softplus(),
             nn.Linear(hidden_dimensions, hidden_dimensions),
             nn.Softplus(),
+            nn.Linear(hidden_dimensions, hidden_dimensions),
+            nn.Softplus(),
+            nn.Linear(hidden_dimensions, hidden_dimensions),
+            nn.Softplus(),
             nn.Linear(hidden_dimensions, 1)
         )
 
     def forward(self, x):
         # x = (q0, q1, ..., q0_t, q1_t, ...)
-        H = hessian(self.lagrangian, x, True, True)
-        J = jacobian(self.lagrangian, x, True, True)
+        H = hessian(self.lagrangian, x, True)
+        J = jacobian(self.lagrangian, x, True)
 
         A = J[0, :self.num_params]
         B = H[self.num_params:, self.num_params:]

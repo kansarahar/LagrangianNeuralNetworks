@@ -103,7 +103,7 @@ class Double_Pendulum:
         B = H[2:, 2:]
         C = H[2:, :2]
 
-        q_tt = torch.inverse(B) @ (A - C @ state[2:])
+        q_tt = torch.linalg.pinv(B) @ (A - C @ state[2:])
         return torch.cat((state[2:], q_tt))
 
     def get_derivs_lnn(self, state=None, t=0):
@@ -134,8 +134,3 @@ class Double_Pendulum:
         self.state[0] %= (2*np.pi) # angles should be [0, 2pi)
         self.state[1] %= (2*np.pi)
         return step
-
-#dp = Double_Pendulum(1,1)
-#state = tensor([1,2,3,4]).float()
-#qtt = dp.get_derivs_lagrangian(state)
-#print(qtt)
