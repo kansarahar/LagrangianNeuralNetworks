@@ -19,7 +19,7 @@ parser = argparse.ArgumentParser(
 )
 
 parser.add_argument('--experiment', dest='experiment', type=str, choices=['double_pendulum', 'spring_pendulum', 'cart_pendulum'], default='double_pendulum', help='the type of experiment that the LNN is learning')
-parser.add_argument('--model-name', dest='model_name', type=str, default='model.pt', help='the name of the LNN model to be saved or loaded')
+parser.add_argument('--model-name', dest='model_name', type=str, default='pretrained_lnn.pt', help='the name of the LNN model to be saved or loaded')
 parser.add_argument('--lnn', dest='lnn', action='store_true', help='use the trained model instead of the analytical solution')
 
 args = parser.parse_args()
@@ -29,7 +29,7 @@ args = parser.parse_args()
 # ----------------------------------------------------------
 
 dir_name = os.path.dirname(os.path.abspath(__file__))
-model_dir = os.path.join(dir_name, 'models', '%s_models' % args.experiment)
+model_dir = os.path.join(dir_name, 'models', '%s_models' % args.experiment, 'LNN')
 model_path = os.path.join(model_dir, args.model_name)
 
 # ---------------------------------------------------------- 
@@ -59,10 +59,10 @@ default_font = pygame.font.Font(pygame.font.get_default_font(), 16)
 # ----------------------------------------------------------
 
 double_pendulum = Double_Pendulum(np.pi*0.26, np.pi*0.82)
-spring_pendulum = Spring_Pendulum(np.pi*0.26, 1.2)
+spring_pendulum = Spring_Pendulum(np.pi*0.36, 1.2)
 cart_pendulum = Cart_Pendulum(2, np.pi*0.26)
 
-model = LNN(2)
+model = LNN()
 if args.lnn:
     model.load_state_dict(torch.load(model_path))
     model.eval()
@@ -90,7 +90,7 @@ while True:
     if (args.experiment == 'double_pendulum'):
    
         x1, y1, x2, y2 = 0.1 * px * double_pendulum.get_cartesian_coords().detach().numpy()
-        double_pendulum.step_lnn() if args.lnn else double_pendulum.step_lagrangian()
+        double_pendulum.step_lnn() if args.lnn else double_pendulum.step_analytical()
         
         vertical_offset = 100
         mass1_pos = (bg_surface.get_width()//2 + x1, y1 + vertical_offset)
@@ -118,7 +118,7 @@ while True:
         spring_pendulum.lnn = model
    
         x, y = 0.1 * px * spring_pendulum.get_cartesian_coords().detach().numpy()
-        spring_pendulum.step_lnn() if args.lnn else spring_pendulum.step_lagrangian()
+        spring_pendulum.step_lnn() if args.lnn else spring_pendulum.step_analytical()
         
         vertical_offset = 100
         mass_pos = (bg_surface.get_width()//2 + x, y + vertical_offset)
@@ -143,7 +143,7 @@ while True:
         spring_pendulum.lnn = model
    
         xc, yc, xp, yp = 0.1 * px * cart_pendulum.get_cartesian_coords().detach().numpy()
-        cart_pendulum.step_lnn() if args.lnn else cart_pendulum.step_lagrangian()
+        cart_pendulum.step_lnn() if args.lnn else cart_pendulum.step_analytical()
         
         vertical_offset = 100
         cart_pos = (bg_surface.get_width()//2 + xc, vertical_offset - 10)

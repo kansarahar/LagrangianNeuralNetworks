@@ -149,7 +149,7 @@ class Double_Pendulum:
         return step
 
 class Spring_Pendulum:
-    def __init__(self, theta, r, theta_t=0, r_t=0, m=1, k=10, r0=1, g=9.8, lnn=None):
+    def __init__(self, r, theta, r_t=0, theta_t=0, m=1, k=10, r0=1, g=9.8, lnn=None):
         '''
         :param theta: the initial angle of the mass w.r.t the y-axis (radians)
         :param r: the initial length of the spring (m)
@@ -166,23 +166,23 @@ class Spring_Pendulum:
         self.r0 = r0
         self.k = k
         self.g = g
-        self.state = tensor([theta, r, theta_t, r_t]).float()
+        self.state = tensor([r, theta, r_t, theta_t]).float()
         self.lnn = lnn
 
     def get_cartesian_coords(self, state=None):
         state = state if state is not None else self.state
-        theta, r, theta_t, r_t = state
+        r, theta, r_t, theta_t = state
         x, y = r * torch.sin(theta), r * torch.cos(theta)
         return torch.stack([x, y])
 
     def get_potential_energy(self, state=None):
         state = state if state is not None else self.state
-        theta, r, theta_t, r_t = state
+        r, theta, r_t, theta_t = state
         return -self.m * self.g * r * torch.cos(theta) + 0.5 * self.k * (r - self.r0)**2
 
     def get_kinetic_energy(self, state=None):
         state = state if state is not None else self.state
-        theta, r, theta_t, r_t = state
+        r, theta, r_t, theta_t = state
         return 0.5 * self.m * (r_t**2 + (r * theta_t)**2)
 
     def get_total_energy(self, state=None):
@@ -202,14 +202,14 @@ class Spring_Pendulum:
         state = state if state is not None else self.state
 
         m, k, r0, g = self.m, self.k, self.r0, self.g
-        theta, r, theta_t, r_t = state.tolist() # angles and angular velocities of the two masses
+        r, theta, r_t, theta_t = state.tolist() # angles and angular velocities of the two masses
 
-        r = r if r is not 0 else 1e-3
+        r = r if r > 1e-3 else 1e-3
         theta_tt = -(g * np.sin(theta) + 2 * r_t * theta_t) / r
         r_tt = r * theta_t**2 + g * np.cos(theta) - k * (r - r0) / m
 
         # return derivative of state
-        return tensor([theta_t, r_t, theta_tt, r_tt]).float()
+        return tensor([r_t, theta_t, r_tt, theta_tt]).float()
 
     def get_derivs_lagrangian(self, state=None, t=0):
         state = state if state is not None else self.state
@@ -235,19 +235,22 @@ class Spring_Pendulum:
     def step_analytical(self, dt=0.01):
         step = RK4_step(self.get_derivs_analytical, self.state, 0, dt)
         self.state += step
-        self.state[0] %= (2*np.pi) # angles should be [0, 2pi)
+        self.state[0] = max(self.state[0], 1e-3) # lengths should be positive
+        self.state[1] %= (2*np.pi) # angles should be [0, 2pi)
         return step
 
     def step_lagrangian(self, dt=0.01):
         step = RK4_step(self.get_derivs_lagrangian, self.state, 0, dt)
         self.state += step
-        self.state[0] %= (2*np.pi) # angles should be [0, 2pi)
+        self.state[0] = max(self.state[0], 1e-3) # lengths should be positive
+        self.state[1] %= (2*np.pi) # angles should be [0, 2pi)
         return step
 
     def step_lnn(self, dt=0.01):
         step = RK4_step(self.get_derivs_lnn, self.state, 0, dt)
         self.state += step
-        self.state[0] %= (2*np.pi) # angles should be [0, 2pi)
+        self.state[0] = max(self.state[0], 1e-3) # lengths should be positive
+        self.state[1] %= (2*np.pi) # angles should be [0, 2pi)
         return step
 
 class Cart_Pendulum:
@@ -289,7 +292,8 @@ class Cart_Pendulum:
     def get_kinetic_energy(self, state=None):
         state = state if state is not None else self.state
         d, theta, d_t, theta_t = state
-        return 0.5 * (self.mc * d_t**2 + self.mp * (self.l * theta_t)**2)
+        vp_x, vp_y = d_t + self.l * theta_t * torch.sin(theta), self.l * theta_t * torch.cos(theta)
+        return 0.5 * self.mc * d_t**2 + 0.5 * self.mp * (vp_x**2 + vp_y**2)
 
     def get_total_energy(self, state=None):
         state = state if state is not None else self.state
@@ -309,8 +313,15 @@ class Cart_Pendulum:
 
         d, theta, d_t, theta_t = state.tolist()
 
-        d_tt = -self.k * (d - self.d0) / self.mc
-        theta_tt = -self.g * np.sin(theta) / self.l**2
+        f1 = -self.k * (d - self.d0) / self.mp - self.l * theta_t**2 * np.cos(theta)
+        f2 = -self.g * np.sin(theta)
+        a1 = (self.mc + self.mp) / self.mp
+        a2 = self.l * np.sin(theta)
+        a3 = self.l**2
+        det = (a1 * a3 - a2 * a2)
+        d_tt = (f1 * a3 - f2 * a2) / det
+        theta_tt = (f2 * a1 - f1 * a2) / det
+
         # return derivative of state
         return tensor([d_t, theta_t, d_tt, theta_tt]).float()
 
@@ -338,17 +349,20 @@ class Cart_Pendulum:
     def step_analytical(self, dt=0.01):
         step = RK4_step(self.get_derivs_analytical, self.state, 0, dt)
         self.state += step
-        self.state[0] %= (2*np.pi) # angles should be [0, 2pi)
+        self.state[0] = max(self.state[0], 1e-3) # lengths should be positive
+        self.state[1] %= (2*np.pi) # angles should be [0, 2pi)
         return step
 
     def step_lagrangian(self, dt=0.01):
         step = RK4_step(self.get_derivs_lagrangian, self.state, 0, dt)
         self.state += step
-        self.state[0] %= (2*np.pi) # angles should be [0, 2pi)
+        self.state[0] = max(self.state[0], 1e-3) # lengths should be positive
+        self.state[1] %= (2*np.pi) # angles should be [0, 2pi)
         return step
 
     def step_lnn(self, dt=0.01):
         step = RK4_step(self.get_derivs_lnn, self.state, 0, dt)
         self.state += step
-        self.state[0] %= (2*np.pi) # angles should be [0, 2pi)
+        self.state[0] = max(self.state[0], 1e-3) # lengths should be positive
+        self.state[1] %= (2*np.pi) # angles should be [0, 2pi)
         return step
