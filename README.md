@@ -1,5 +1,7 @@
 # Lagrangian Neural Networks
 
+Based on [Lagrangian Neural Networks](https://arxiv.org/abs/2003.04630) by Cranmer et al.
+
 
 ## Getting Started
 
